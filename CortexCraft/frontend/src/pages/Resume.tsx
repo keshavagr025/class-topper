@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../apiConfig';
+
 import { UploadArea } from '../components/UploadArea';
 import { AnalysisResults } from '../components/AnalysisResults';
 import { 
@@ -30,7 +32,8 @@ export default function Resume() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch('http://localhost:8000/api/analyze-resume', {
+      const res = await fetch(`${API_BASE_URL}/api/analyze-resume`, {
+
         method: 'POST',
         body: formData,
       });

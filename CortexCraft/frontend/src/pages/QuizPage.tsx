@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../apiConfig";
+
 import {
     ArrowLeft,
     UploadCloud,
@@ -21,7 +23,7 @@ interface Toast {
     type: ToastType;
 }
 
-const API = "http://localhost:8000/api";
+const API = API_URL;
 const ACCEPTED = [".pdf", ".docx", ".txt"];
 
 function formatBytes(bytes: number): string {

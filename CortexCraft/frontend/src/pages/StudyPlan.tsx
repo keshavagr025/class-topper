@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../apiConfig";
+
 import { 
   ArrowLeft, 
   Calendar, 
@@ -55,7 +57,8 @@ export default function StudyPlan() {
     const subjectList = subjects.split(",").map((s) => s.trim()).filter(s => s !== "");
 
     try {
-      const res = await fetch("http://localhost:8000/api/generate-study-plan", {
+      const res = await fetch(`${API_BASE_URL}/api/generate-study-plan`, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Editor, useMonaco } from '@monaco-editor/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from '../apiConfig';
+
 import {
   Hash, Code, Users, Sparkles, X, Bot, Play, Terminal,
   ChevronRight, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle,
@@ -247,7 +249,7 @@ export default function CodeCollab() {
 
   // ─── Create socket ONCE on mount ──────────────────
   useEffect(() => {
-    const socket = io('http://localhost:8000', {
+    const socket = io(API_BASE_URL, {
       transports: ['websocket'],  // skip polling → instant connect
       reconnection: true,
       reconnectionAttempts: 20,
@@ -436,7 +438,7 @@ export default function CodeCollab() {
     setShowTerminal(true); setOutput([]); setIsExecuting(true);
     addLine(`❯ Running ${LANGUAGES.find(l => l.id===language)?.name ?? language}...`, 'system');
     try {
-      const res  = await fetch('http://localhost:8000/api/code/execute', {
+      const res  = await fetch(`${API_BASE_URL}/api/code/execute`, {
         method: 'POST', headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ code, language }),
       });
@@ -453,7 +455,7 @@ export default function CodeCollab() {
   const triggerReview = async () => {
     setShowReview(true); setIsReviewing(true); setReviewResult('');
     try {
-      const res = await fetch('http://localhost:8000/api/code/review', {
+      const res = await fetch(`${API_BASE_URL}/api/code/review`, {
         method: 'POST', headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ code, language }),
       });
