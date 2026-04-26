@@ -2,7 +2,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import os
 import socketio as _sio_lib
+
 
 from routes import resume
 from summarizer_app.interview_routes import router as interview_router
@@ -22,7 +24,10 @@ from socket_coding import sio          # Socket.IO AsyncServer instance
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
+    if not os.path.exists("uploads"):
+        os.makedirs("uploads")
     yield
+
     await close_mongo_connection()
 
 
