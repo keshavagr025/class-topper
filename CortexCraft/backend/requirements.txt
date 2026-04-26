@@ -1,0 +1,24 @@
+fastapi
+uvicorn[standard]
+python-multipart
+transformers
+torch
+pydantic
+PyMuPDF
+google-generativeai
+python-docx
+groq
+motor
+websockets
+requests
+pydantic
+
+# Document parsing
+PyPDF2
+python-docx
+pypdf
+
+# Optional (summary model)
+transformers
+torch
+
