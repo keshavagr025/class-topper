@@ -22,6 +22,35 @@ CortexCraft is an intelligent, comprehensive platform designed to supercharge yo
 
 Built with an ultra-modern tech stack, the platform offers everything from instant note summaries and 3D visual mindmaps to adaptive quizzes, a real-time developer community, and ATS-optimized resume analysis.
 
+
+## 📸 Screenshots
+
+<div align="center">
+  <!-- Replace 'assets/screenshot1.png' with the actual path to your screenshot -->
+  <img width="1395" height="775" alt="WhatsApp Image 2026-04-28 at 00 12 40" src="https://github.com/user-attachments/assets/8e722ba7-4140-4dee-bee4-5ba432696972" />
+
+  <br/>
+  <em>Main Platform View</em>
+</div>
+
+<br/>
+
+<div align="center">
+ <img width="1376" height="769" alt="WhatsApp Image 2026-04-28 at 00 12 40 (1)" src="https://github.com/user-attachments/assets/b37c973e-b7a8-4163-a121-c5a4d68d0f5e" />
+
+
+  &nbsp;&nbsp;
+<img width="1381" height="760" alt="WhatsApp Image 2026-04-28 at 00 12 40 (2)" src="https://github.com/user-attachments/assets/a86245d3-baaf-4a47-bcdc-d63d3e9c11f6" />
+  <br/>
+  <img width="1369" height="761" alt="WhatsApp Image 2026-04-28 at 00 12 41" src="https://github.com/user-attachments/assets/ad066a84-732c-404e-aa06-2c4005407e27" />
+<img width="1907" height="870" alt="Screenshot 2026-04-18 023916" src="https://github.com/user-attachments/assets/54d4cfa3-3294-462d-84a5-dc06b825350a" />
+ <br/>
+<img width="1768" height="841" alt="Screenshot 2026-04-18 023749" src="https://github.com/user-attachments/assets/9bd7077f-3c9f-4746-9ac9-4da264b3c165" />
+
+  <em> 7+ Features in this project </em>
+</div>
+
+
 ---
 
 ## ✨ Key Features
