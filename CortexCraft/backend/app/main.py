@@ -16,6 +16,7 @@ from routes.quiz import router as quiz_router
 from routes.flashcards import router as flashcards_router
 from routes.chatbot import router as chatbot_router
 from routes.analytics import router as analytics_router
+from routes.auth import router as auth_router
 from config.db import connect_to_mongo, close_mongo_connection
 from socket_coding import sio          # Socket.IO AsyncServer instance
 
@@ -51,6 +52,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ── REST Routers ──────────────────────────────────────────────────────────────
+app.include_router(auth_router,         prefix="/api")
 app.include_router(interview_router,    prefix="/api")
 app.include_router(resume.router,       prefix="/api")
 app.include_router(community_router,    prefix="/api")

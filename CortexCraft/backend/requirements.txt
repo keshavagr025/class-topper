@@ -21,4 +21,5 @@ pypdf
 # Optional (summary model)
 transformers
 torch
-
+pyjwt
+bcrypt

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -12,24 +12,190 @@ import {
   CheckCircle2,
   Lock,
   Globe,
-  Stars
+  Stars,
+  User,
+  AlertCircle
 } from 'lucide-react';
+import { API_URL } from '../apiConfig';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "your-google-client-id.apps.googleusercontent.com";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
+  // OTP Auth States
+  const [isOtpMode, setIsOtpMode] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+
+  // Handle Google Sign-In Response
+  const handleGoogleCredentialResponse = async (response: any) => {
     setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('user', JSON.stringify({
-        name: 'Curious Scholar',
-        email: 'scholar@cortexcraft.ai',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
-      }));
-      setLoading(false);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: response.credential }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Google authentication failed");
+      }
+
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Dispatch storage event manually to notify App.tsx if needed
+      window.dispatchEvent(new Event('storage'));
+      
       window.location.href = '/home';
-    }, 1800);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred during Google Sign-In");
+      setLoading(false);
+    }
+  };
+
+  // Initialize Google Identity Services
+  useEffect(() => {
+    const initializeGoogle = () => {
+      const google = (window as any).google;
+      if (google && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredentialResponse
+          });
+          
+          google.accounts.id.renderButton(
+            document.getElementById("google-signin-btn"),
+            { 
+              theme: "filled_blue", 
+              size: "large", 
+              width: 320,
+              text: isSignUp ? "signup_with" : "signin_with",
+              shape: "pill"
+            }
+          );
+        } catch (err) {
+          console.error("Error rendering Google button", err);
+        }
+      }
+    };
+
+    // Give it a tiny delay to ensure script has loaded
+    const timer = setTimeout(initializeGoogle, 600);
+    return () => clearTimeout(timer);
+  }, [isSignUp]);
+
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/otp/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Failed to send OTP. Please try again.");
+      }
+      setOtpSent(true);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred while sending OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp) {
+      setError("Please enter the OTP sent to your email.");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/otp/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp, name: isSignUp ? name : undefined }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "OTP verification failed. Please try again.");
+      }
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Dispatch storage event manually to notify App.tsx
+      window.dispatchEvent(new Event('storage'));
+      window.location.href = '/home';
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred during OTP verification.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || (isSignUp && !name)) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const endpoint = isSignUp ? '/auth/signup' : '/auth/login';
+      const payload = isSignUp 
+        ? { email, password, name } 
+        : { email, password };
+
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Authentication failed");
+      }
+
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Dispatch storage event manually
+      window.dispatchEvent(new Event('storage'));
+      
+      window.location.href = '/home';
+    } catch (err: any) {
+      setError(err.message || "An error occurred during authentication.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -112,7 +278,7 @@ export default function LoginPage() {
         </motion.div>
       </div>
 
-      {/* Right Side: Login Form */}
+      {/* Right Side: Auth Form */}
       <div style={{ 
         flex: 0.8, 
         background: '#0a0f1e', 
@@ -128,101 +294,375 @@ export default function LoginPage() {
           animate={{ opacity: 1, x: 0 }}
           style={{ width: '100%', maxWidth: '400px' }}
         >
-          <div style={{ marginBottom: '48px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', background: '#4F46E5', color: '#fff', width: 56, height: 56, borderRadius: '16px', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 10px 25px rgba(79, 70, 229, 0.3)' }}>
+          <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', background: '#4F46E5', color: '#fff', width: 56, height: 56, borderRadius: '16px', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 10px 25px rgba(79, 70, 229, 0.3)' }}>
               <GraduationCap size={28} />
             </div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 12 }}>Welcome Back</h2>
-            <p style={{ color: '#64748b' }}>Enter your credentials to access your workspace.</p>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 8 }}>
+              {isSignUp ? "Create Account" : "Welcome Back"}
+            </h2>
+            <p style={{ color: '#64748b' }}>
+              {isSignUp ? "Sign up to start your learning journey" : "Enter your credentials to access your workspace"}
+            </p>
           </div>
 
-          <div style={{ display: 'grid', gap: '20px' }}>
-            <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Email Address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
-                <input 
-                  type="email" 
-                  placeholder="name@example.com"
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
-                <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
-                />
-              </div>
-            </div>
-
+          {/* Tab Selector */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            padding: '4px',
+            borderRadius: '10px',
+            marginBottom: '20px',
+          }}>
             <button 
-              onClick={handleLogin}
-              disabled={loading}
-              style={{ 
-                background: '#fff', 
-                color: '#020617', 
-                border: 'none', 
-                padding: '16px', 
-                borderRadius: '12px', 
-                fontSize: '1rem', 
-                fontWeight: 700, 
-                cursor: loading ? 'not-allowed' : 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: 12,
-                marginTop: '12px',
-                transition: '0.3s'
+              type="button"
+              onClick={() => { setIsOtpMode(false); setError(''); }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: !isOtpMode ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.3s'
               }}
-              onMouseOver={e => !loading && (e.currentTarget.style.background = '#e2e8f0')}
-              onMouseOut={e => !loading && (e.currentTarget.style.background = '#fff')}
             >
-              {loading ? (
-                <div style={{ width: 20, height: 20, border: '3px solid #020617', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              ) : (
-                <>Sign in to Account <ArrowRight size={20} /></>
+              Password
+            </button>
+            <button 
+              type="button"
+              onClick={() => { setIsOtpMode(true); setError(''); }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: isOtpMode ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.3s'
+              }}
+            >
+              Email OTP
+            </button>
+          </div>
+
+          {!isOtpMode ? (
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
+              {/* Error Notification */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    style={{ 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)', 
+                      color: '#f87171', 
+                      padding: '12px', 
+                      borderRadius: '10px', 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10 
+                    }}
+                  >
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {isSignUp && (
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Full Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <User style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                    <input 
+                      type="text" 
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
+                    />
+                  </div>
+                </div>
               )}
-            </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '12px 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
-              <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>OR CONTINUE WITH</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
-            </div>
+              <div style={{ position: 'relative' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
+                  />
+                </div>
+              </div>
 
-            <button 
-              onClick={handleLogin}
-              style={{ 
-                background: 'rgba(255,255,255,0.03)', 
-                color: '#fff', 
-                border: '1px solid rgba(255,255,255,0.1)', 
-                padding: '14px', 
-                borderRadius: '12px', 
-                fontSize: '0.95rem', 
-                fontWeight: 600, 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: 12,
-                transition: '0.3s'
-              }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: 18 }} />
-              Google Authentication
-            </button>
+              <div style={{ position: 'relative' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Lock style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                style={{ 
+                  background: '#fff', 
+                  color: '#020617', 
+                  border: 'none', 
+                  padding: '16px', 
+                  borderRadius: '12px', 
+                  fontSize: '1rem', 
+                  fontWeight: 700, 
+                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: 12,
+                  marginTop: '12px',
+                  transition: '0.3s'
+                }}
+                onMouseOver={e => !loading && (e.currentTarget.style.background = '#e2e8f0')}
+                onMouseOut={e => !loading && (e.currentTarget.style.background = '#fff')}
+              >
+                {loading ? (
+                  <div style={{ width: 20, height: 20, border: '3px solid #020617', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                ) : (
+                  <>
+                    <span>{isSignUp ? "Create Account" : "Sign in to Account"}</span> 
+                    <ArrowRight size={20} />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : !otpSent ? (
+            <form onSubmit={handleSendOTP} style={{ display: 'grid', gap: '16px' }}>
+              {/* Error Notification */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    style={{ 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)', 
+                      color: '#f87171', 
+                      padding: '12px', 
+                      borderRadius: '10px', 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10 
+                    }}
+                  >
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div style={{ position: 'relative' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                style={{ 
+                  background: '#fff', 
+                  color: '#020617', 
+                  border: 'none', 
+                  padding: '16px', 
+                  borderRadius: '12px', 
+                  fontSize: '1rem', 
+                  fontWeight: 700, 
+                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: 12,
+                  marginTop: '12px',
+                  transition: '0.3s'
+                }}
+                onMouseOver={e => !loading && (e.currentTarget.style.background = '#e2e8f0')}
+                onMouseOut={e => !loading && (e.currentTarget.style.background = '#fff')}
+              >
+                {loading ? (
+                  <div style={{ width: 20, height: 20, border: '3px solid #020617', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                ) : (
+                  <>
+                    <span>Send Verification Code</span> 
+                    <ArrowRight size={20} />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOTP} style={{ display: 'grid', gap: '16px' }}>
+              {/* Error Notification */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    style={{ 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)', 
+                      color: '#f87171', 
+                      padding: '12px', 
+                      borderRadius: '10px', 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10 
+                    }}
+                  >
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div style={{ 
+                background: 'rgba(79, 70, 229, 0.05)', 
+                border: '1px solid rgba(79, 70, 229, 0.15)', 
+                padding: '12px', 
+                borderRadius: '10px', 
+                fontSize: '0.85rem',
+                color: '#94a3b8',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>Code sent to <strong>{email}</strong></span>
+                <span 
+                  onClick={() => { setOtpSent(false); setOtp(''); }} 
+                  style={{ color: '#818cf8', fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem' }}
+                >
+                  Change
+                </span>
+              </div>
+
+              {isSignUp && (
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Full Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <User style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                    <input 
+                      type="text" 
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ position: 'relative' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px', marginLeft: '4px' }}>Verification Code (OTP)</label>
+                <div style={{ position: 'relative' }}>
+                  <ShieldCheck style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="123456"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 14px 14px 48px', borderRadius: '12px', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: '0.3s', letterSpacing: '4px', fontWeight: 'bold' }}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                style={{ 
+                  background: '#fff', 
+                  color: '#020617', 
+                  border: 'none', 
+                  padding: '16px', 
+                  borderRadius: '12px', 
+                  fontSize: '1rem', 
+                  fontWeight: 700, 
+                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: 12,
+                  marginTop: '12px',
+                  transition: '0.3s'
+                }}
+                onMouseOver={e => !loading && (e.currentTarget.style.background = '#e2e8f0')}
+                onMouseOut={e => !loading && (e.currentTarget.style.background = '#fff')}
+              >
+                {loading ? (
+                  <div style={{ width: 20, height: 20, border: '3px solid #020617', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                ) : (
+                  <>
+                    <span>{isSignUp ? "Verify & Register" : "Verify & Sign In"}</span> 
+                    <ArrowRight size={20} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '24px 0' }}>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+            <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>OR CONTINUE WITH</span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
           </div>
 
-          <p style={{ textAlign: 'center', marginTop: '40px', fontSize: '0.9rem', color: '#64748b' }}>
-            Don't have an account? <span style={{ color: '#818cf8', fontWeight: 600, cursor: 'pointer' }}>Sign up for free</span>
+          {/* Google Sign-In SDK button container */}
+          <div style={{ display: 'flex', justifyContent: 'center', minHeight: '44px' }}>
+            <div id="google-signin-btn"></div>
+          </div>
+
+          <p style={{ textAlign: 'center', marginTop: '36px', fontSize: '0.9rem', color: '#64748b' }}>
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
+            <span 
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+              }}
+              style={{ color: '#818cf8', fontWeight: 600, cursor: 'pointer' }}
+            >
+              {isSignUp ? "Sign in instead" : "Sign up for free"}
+            </span>
           </p>
         </motion.div>
 

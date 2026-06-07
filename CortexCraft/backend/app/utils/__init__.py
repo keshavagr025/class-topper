@@ -2,7 +2,6 @@ from pypdf import PdfReader
 import docx
 
 def extract_text_from_file(file_path: str) -> str:
-
     # TXT
     if file_path.endswith(".txt"):
         with open(file_path, "r", encoding="utf-8") as f:

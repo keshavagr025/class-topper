@@ -2,7 +2,8 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ServerSelectionTimeoutError
 
-MONGODB_URL   = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+# Check both MONGODB_URL and DATABASE_URL
+MONGODB_URL   = os.getenv("MONGODB_URL") or os.getenv("DATABASE_URL") or "mongodb://localhost:27017"
 DATABASE_NAME = "cortexcraft"
 
 client = None
@@ -17,28 +18,28 @@ async def connect_to_mongo():
         
         # Trigger a simple command to verify connectivity
         await client.admin.command('ping')
-        print(f"✅ [DB] Successfully connected to MongoDB: {DATABASE_NAME}")
+        print(f"[DB] Successfully connected to MongoDB: {DATABASE_NAME}")
     except ServerSelectionTimeoutError:
-        print("❌ [DB] ERROR: Could not connect to MongoDB Atlas.")
-        print("👉 Possible reasons:")
+        print("[DB] ERROR: Could not connect to MongoDB Atlas.")
+        print("Possible reasons:")
         print("   1. Your current IP might not be whitelisted on MongoDB Atlas.")
         print("   2. Network connection issue or Firewall blocking port 27017.")
         print("   3. Database URL is incorrect.")
-        print("\n🔧 Try using local MongoDB or check your Atlas 'Network Access' settings.")
+        print("\nTry using local MongoDB or check your Atlas 'Network Access' settings.")
         
         # Fallback to local if Atlas failed (Optional, but helps keep app running)
         if "mongodb+srv" in MONGODB_URL:
-             print("🔄 Attempting to fallback to Local MongoDB (localhost:27017)...")
+             print("[DB] Attempting to fallback to Local MongoDB (localhost:27017)...")
              try:
                  client = AsyncIOMotorClient("mongodb://localhost:27017", serverSelectionTimeoutMS=2000)
                  db = client[DATABASE_NAME]
                  await client.admin.command('ping')
-                 print(f"✅ [DB] Fallback successful! Connected to Local MongoDB.")
+                 print(f"[DB] Fallback successful! Connected to Local MongoDB.")
              except:
-                 print("❌ [DB] Local MongoDB also unavailable.")
+                 print("[DB] Local MongoDB also unavailable.")
                  db = None
     except Exception as e:
-        print(f"❌ [DB] Unexpected error connecting to MongoDB: {e}")
+        print(f"[DB] Unexpected error connecting to MongoDB: {e}")
         db = None
 
 async def close_mongo_connection():
