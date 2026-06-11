@@ -12,6 +12,8 @@ motor
 websockets
 requests
 pydantic
+python-socketio
+python-dotenv
 
 # Document parsing
 PyPDF2
