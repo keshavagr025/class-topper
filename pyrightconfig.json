@@ -1,0 +1,5 @@
+{
+  "extraPaths": [
+    "./CortexCraft/backend/app"
+  ]
+}

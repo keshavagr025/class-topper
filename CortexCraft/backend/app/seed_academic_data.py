@@ -3,8 +3,14 @@ import motor.motor_asyncio
 from bson import ObjectId
 from datetime import datetime, timedelta
 import random
+import os
+from dotenv import load_dotenv
 
-MONGO_URL = "mongodb://localhost:27017"
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+MONGO_URL = os.getenv("DATABASE_URL") or os.getenv("MONGODB_URL") or "mongodb://localhost:27017"
+
 DB_NAME = "cortexcraft"
 
 messages_templates = [

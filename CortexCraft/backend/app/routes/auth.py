@@ -3,9 +3,13 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 import random
 
+# pyrefly: ignore [missing-import]
 from config.db import get_database
+# pyrefly: ignore [missing-import]
 from models.user import UserSignup, UserLogin, GoogleLoginRequest, SendOTPRequest, VerifyOTPRequest
+# pyrefly: ignore [missing-import]
 from utils.auth import hash_password, verify_password, create_access_token, verify_google_token
+# pyrefly: ignore [missing-import]
 from utils.email import send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
