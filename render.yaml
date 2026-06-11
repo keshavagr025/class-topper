@@ -22,10 +22,11 @@ services:
         sync: false
 
   # 2. Frontend Service (React Static Site - Zero Cold Starts)
-  - type: static
+  - type: web
     name: cortex-frontend
+    runtime: static
     buildCommand: npm install && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     rootDir: CortexCraft/frontend
     envVars:
       - key: VITE_API_URL
